@@ -44,8 +44,8 @@ MainWindow::MainWindow(QWidget *parent)
     //Configure x and y-Axis to display Labels
     ui->CustomPlot->xAxis->setTickLabelFont(QFont(QFont().family(),8));
     ui->CustomPlot->yAxis->setTickLabelFont(QFont(QFont().family(),8));
-    ui->CustomPlot->xAxis->setLabel("Time(s)");
-    ui->CustomPlot->yAxis->setLabel("ADC Value");
+    ui->CustomPlot->xAxis->setLabel("Index");
+    ui->CustomPlot->yAxis->setLabel("Magnitude");
 
     //Make top and right axis visible, but without ticks and label
     ui->CustomPlot->xAxis->setVisible(true);
@@ -162,7 +162,7 @@ void MainWindow::store_data()
      int counter=0;
 
      //Iterate of the length starting from rear and check if termination character has been received
-     for(int i=0;i<len;++i)
+     for(int i=len-1;i>=0;--i)
      {
          //Check if the character matches the termination character
          if(serialData[i]=='\n')
@@ -192,9 +192,9 @@ void MainWindow::store_data()
                  if(begin_temp.length()>2*PLOT_COUNT)
                  {
                      //plot the data
-                     plot_data(begin_temp.toStdString());
+                     segregate_data(begin_temp.toStdString());
+                     plot_data(data_index,data_point1,1);
                  }
-
 
                  serialData=end_temp;
                  break;
@@ -205,38 +205,12 @@ void MainWindow::store_data()
 
      }
 
-
-     /*
-     //Storing and wrapping around data into a data array
-     while(i<len)
-     {
-        data_array[store_index]=serialData[i];
-        ++store_index;
-        ++i;
-        if(store_index>BUFF_LEN-1)//wrap around
-        {
-            int first_index=first_index_of(data_array,BUFF_LEN,'S');
-            int last_index=last_index_of(data_array,BUFF_LEN,'E');
-
-            if(last_index>first_index)
-            {
-                middle_string=data_array;
-                middle_string=middle_string.substr(first_index,last_index-first_index+1);
-                plot_data(middle_string);
-            }
-
-            //reset the index of the data_array
-            store_index=0;
-
-        }
-     }*/
 }
+
+
 /*Function to plot the string of data*/
-void MainWindow::plot_data(std::string plot_string)
+void MainWindow::segregate_data(std::string plot_string)
 {
-    static QTime time(QTime::currentTime());//Assign the current system time to variable time
-    double key=time.elapsed()/1000.0;
-    static double lastPointKey=0;//static variable holds the value of the variable till the next iteration
 
     //convert std::string to QString
     QString data=QString::fromStdString(plot_string);
@@ -244,34 +218,48 @@ void MainWindow::plot_data(std::string plot_string)
     //split the string by choice of delimiter
     QStringList data_split=data.split("\r\n");
     int l =data_split.length()-1;
-    //qDebug()<<l;
     //qDebug()<<"DataSplit:"<<data_split;
 
 
-    for(int i=0;i<l;++i)
+    //Extract the meaningful data and remove the garbage values
+    for(int i=0;i<l-1;++i)
     {
 
-        //if(data_split[i]=="")
-          //  continue;
-
         //qDebug()<<i<<"-"<<data_split[i];
-        ui->CustomPlot->graph(i%PLOT_COUNT)->addData(key,data_split[i].toDouble());
-        ui->CustomPlot->graph(i%PLOT_COUNT)->rescaleValueAxis();
-        ui->CustomPlot->xAxis->setRange(key,4, Qt::AlignRight);
-        ui->CustomPlot->yAxis->setRange(-100,500);
-        ui->CustomPlot->replot();
-        lastPointKey=key;
-
+        if(counter<BUFF_LEN)
+        {
+            ++counter;
+            data_index.append(counter);
+            data_point1.append(data_split[i].toDouble());
+        }
+        if(counter>=BUFF_LEN)
+        {
+            ++counter;
+            data_index.pop_front();
+            data_index.append(counter);
+            data_point1.pop_front();
+            data_point1.append(data_split[i].toDouble());
+        }
+        //qDebug()<<data_point1;
+        //qDebug()<<data_index;
     }
-
-
-
-
 
 }
 
 
+void MainWindow::plot_data(QVector<double> x, QVector<double> y, uint8_t plot_number)
+{
 
+    //qDebug()<<"Begin "<<x.at(0);
+    //qDebug()<<"End "<<x.at(x.size()-1);
+    ui->CustomPlot->graph(plot_number)->setData(x,y);
+    ui->CustomPlot->graph(plot_number)->rescaleValueAxis();
+    //ui->CustomPlot->xAxis->setRange(x[0],x.end(), Qt::AlignRight);
+    ui->CustomPlot->xAxis->setRange(x.at(0),x.at(x.size()-1));
+    ui->CustomPlot->yAxis->setRange(-10,4096);
+    ui->CustomPlot->replot();
+
+}
 
 
 /*

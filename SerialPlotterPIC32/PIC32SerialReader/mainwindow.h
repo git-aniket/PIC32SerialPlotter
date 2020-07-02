@@ -6,7 +6,10 @@
 #include <QTimer>
 #include <QTime>
 #include <QElapsedTimer>
-#define BUFF_LEN  500
+#include <QVector>
+#include <QVector2D>
+
+#define BUFF_LEN 200
 #define PLOT_COUNT 2// Number of seperate data items that are to be plotted
 
 #define UNO_VENDOR_ID 9025
@@ -38,6 +41,13 @@ public:
     QByteArray end_temp="";
 
 
+    QVector<double> data_point1, data_point2, data_index;
+    uint64_t counter=0;
+
+    QVector<QVector<double>> data_array;
+
+
+
 private slots:
 
     void on_btn_open_port_clicked();
@@ -49,8 +59,11 @@ private slots:
     void store_data();//store available data in to the buffer
 
     //std::string read_data(char *);///reads the stored data from buffer
-    void plot_data(std::string );//plot data after reading from buffer
+    void segregate_data(std::string );//plot data after reading from buffer
     //bool buffer_full();
+
+    void plot_data(QVector <double>, QVector<double>, uint8_t);
+
 
 private:
     Ui::MainWindow *ui;
